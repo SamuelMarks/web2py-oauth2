@@ -30,14 +30,17 @@ def index():
     params = dict()
     success = False
     try:
+        print 'get_vars =', request.get_vars
+        print 'post_vars =', request.post_vars
         params = oauth.validate_authorize_params(request.get_vars)
     except Exception as ex:
+        print 'ex =', ex
         redirect(URL(c='error', vars=dict(msg=ex)))
 
     # POST request. Yes/No answer
     if request.post_vars:
         success = True
-        
+
         # Access given by the user?
         if request.post_vars['accept'] == 'Yes':
             user_id = '501faa19a34feb05890005c9'  # Change it. Get it from your DB

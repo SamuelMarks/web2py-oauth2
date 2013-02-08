@@ -174,9 +174,9 @@ class web2pyStorage(OAuthStorage):
 
     def get_client_credentials(self, client_id):
         """Gets the client credentials by the client application ID given."""
-        
+        print 'self.db.tables =', self.db.tables
         try:
-            return self.db.clients(client_id)
+            return self.db.clients(self.db.clients.clients_id == client_id).select().first()
         except AttributeError:
             self.create_tables()
             return None
@@ -337,7 +337,8 @@ class web2pyStorage(OAuthStorage):
         """Returns the token data, if the refresh token exists"""
     
         try:
-            return self.db.tokens(self.db.tokens.refresh_token == refresh_token).select().first()  # 'code' == 'refresh_token', right? [pid that is]
+            # 'code' == 'refresh_token', right?
+            return self.db.tokens(self.db.tokens.refresh_token == refresh_token).select().first()
         except AttributeError:
             self.create_tables()
             return None

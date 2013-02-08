@@ -126,8 +126,8 @@ class OAuth2(object):
         """
 
         # Checks the "code" parameter
-        code = input_data['code']
-        client_id = input_data['client_id']
+        code = input_data.pop('code', None)
+        client_id = input_data.pop('client_id', None)
         if not code:
             raise HTTP(412, 'KeyError: Parameter missing; "code" is required.')
                     
@@ -146,7 +146,7 @@ class OAuth2(object):
             raise HTTP(410, 'ValueError: The "code" provided has expired')
                                        
         # Checks the "grant_type" parameter
-        elif not input_data['grant_type']:
+        elif not input_data.pop('grant_type', None):
             raise HTTP(412, 'KeyError: Parameter missing; "grant_type" is required.')
 
         # Checks client application credentials
@@ -155,7 +155,7 @@ class OAuth2(object):
         if not client_secret or client_secret != client['client_secret']:
             raise HTTP(424, 'LookupError: Supplied "client_secret" is invalid.')
 
-        redirect_uri = input_data['redirect_uri']
+        redirect_uri = input_data.pop('redirect_uri', None)
         # print redirect_uri, client['redirect_uri']
         if not redirect_uri or redirect_uri != client['redirect_uri']:
             raise HTTP(418, 'NameError: Invalid or mismatch redirect URI.')  # you wanted a teapot... right?!
@@ -194,21 +194,24 @@ class OAuth2(object):
     def validate_authorize_params(self, input_data):
         """Validates the authorize parameters given (usually) by GET"""
 
-        client_id = input_data['client_id']
-        response_type = input_data['response_type']
-        state = input_data['state']
-        the_scope = input_data['the_scope']
-        redirect_uri = input_data['redirect_uri']
-        token_type = self.config[self.CONFIG_TOKEN_TYPE]
-        realm = self.config[self.CONFIG_WWW_REALM]
-        stored_client = self.storage.get_client_credentials(client_id)
-        
         # Checks if the they were passed any parameters
         if not input_data:
             raise HTTP(412, 'KeyError: All parameters are missing :(.')
+
+        client_id = input_data.pop('client_id', None)
+        response_type = input_data.pop('response_type', None)
+        state = input_data.pop('state', None)
+        the_scope = input_data.pop('the_scope', None)
+        redirect_uri = input_data.pop('redirect_uri', None)
+        token_type = self.config.get(self.CONFIG_TOKEN_TYPE, None)
+        realm = self.config.get(self.CONFIG_WWW_REALM, None)
+        print 'client_id =', client_id
+        stored_client = self.storage.get_client_credentials(client_id)
         
         # Checks redirect_uri parameter
-        elif not redirect_uri or not stored_client['redirect_uri'] or redirect_uri != stored_client['redirect_uri']:
+        stored_redirect_uri = stored_client['redirect_uri'] if stored_client else None
+        print 'stored_client =', stored_client
+        if not redirect_uri or not stored_redirect_uri and redirect_uri != stored_redirect_uri:
             raise HTTP(418, 'NameError: Invalid or mismatch redirect URI.')  # you wanted a teapot... right?!
 
         # Checks client_id parameter
@@ -226,13 +229,13 @@ class OAuth2(object):
         # TODO: Support other response types
         elif response_type != self.RESPONSE_TYPE_AUTH_CODE:
             raise HTTP(501, 'The response type you requested is unsupported.')
-
+        
         # Checks the the_scope parameter
-        elif the_scope and not self.check_the_scope(the_scope, self.config[self.CONFIG_SUPPORTED_SCOPES]):
+        elif the_scope and not self.check_the_scope(the_scope, self.config.get(self.CONFIG_SUPPORTED_SCOPES, None)):
             raise HTTP(501, 'The scope you requested is unsupported.')
 
         # Checks the state parameter
-        elif not state and self.config[self.CONFIG_ENFORCE_STATE]:
+        elif not state and self.config.get(self.CONFIG_ENFORCE_STATE, None):
             raise HTTP(412, 'KeyError: Parameter missing; "state" is required.')
 
         return input_data
@@ -251,22 +254,12 @@ class OAuth2(object):
                                                   
             elif bearer != self.TOKEN_BEARER_HEADER_NAME:
                 raise HTTP(415, 'Only "Bearer" token type is allowed')
-        
-            methods += 1
 
-        try:
-            if get_data[self.TOKEN_PARAM_NAME]:
-                token = get_data[self.TOKEN_PARAM_NAME]
-                methods += 1
-        except:
-            pass  # Do we want a `pass` here?
-        
-        try:
-            if post_data[self.TOKEN_PARAM_NAME]:
-                token = post_data[self.TOKEN_PARAM_NAME]
-                methods += 1
-        except:
-            pass  # Do we want a `pass` here?
+        token = post_data.get(self.TOKEN_PARAM_NAME,
+                              get_data.get(self.TOKEN_PARAM_NAME,
+                                           None))
+        if token:
+            methods += 1
             
         if methods > 1:
             raise HTTP(405, 'Only one method may be used to authenticate at a time (Auth header, GET or POST).')
@@ -282,5 +275,4 @@ class OAuth2(object):
         elif self.storage.expired_access_token(token):
             raise HTTP(410, 'ValueError: The access token provided has expired')
                                               
-        return token['access_token']
-
+        return token.get('access_token', None)
