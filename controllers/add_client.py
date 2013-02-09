@@ -19,4 +19,4 @@ def index():
         client_id, client_secret = oauth.storage.add_client(client_name, client_uri)
         success = True
 
-    return locals()
+    return {k:v for k,v in locals().items() if k not in {'storage', 'oauth'}}

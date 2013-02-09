@@ -205,13 +205,12 @@ class OAuth2(object):
         redirect_uri = input_data.pop('redirect_uri', None)
         token_type = self.config.get(self.CONFIG_TOKEN_TYPE, None)
         realm = self.config.get(self.CONFIG_WWW_REALM, None)
-        print 'client_id =', client_id
         stored_client = self.storage.get_client_credentials(client_id)
         
         # Checks redirect_uri parameter
         stored_redirect_uri = stored_client['redirect_uri'] if stored_client else None
         print 'stored_client =', stored_client
-        if not redirect_uri or not stored_redirect_uri and redirect_uri != stored_redirect_uri:
+        if (not redirect_uri or not stored_redirect_uri) and redirect_uri != stored_redirect_uri:
             raise HTTP(418, 'NameError: Invalid or mismatch redirect URI.')  # you wanted a teapot... right?!
 
         # Checks client_id parameter

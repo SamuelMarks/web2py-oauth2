@@ -30,11 +30,8 @@ def index():
     params = dict()
     success = False
     try:
-        print 'get_vars =', request.get_vars
-        print 'post_vars =', request.post_vars
         params = oauth.validate_authorize_params(request.get_vars)
     except Exception as ex:
-        print 'ex =', ex
         redirect(URL(c='error', vars=dict(msg=ex)))
 
     # POST request. Yes/No answer
@@ -53,19 +50,25 @@ def index():
 
     # Builds the response URL
     url = ''
-    try:
-        client_id = params['client_id']
-        redirect_uri = params['redirect_uri']
-        the_scope = params['the_scope']
-        response_type = params['response_type']
-        access_type = params['access_type']
-
-        url = '?' + 'client_id=' + client_id \
-                  + '&redirect_uri=' + redirect_uri + '&response_type=' \
-                  + response_type + '&access_type=' + access_type
-        print 'url =', url
-    except Exception as ex:
-        redirect(URL(c='error', vars=dict(msg=(ex.msg or ex))))
+    #try:
+    client_id = params['client_id']
+    redirect_uri = params['redirect_uri']
+    the_scope = params['the_scope']
+    response_type = params['response_type']
+    access_type = params['access_type']
+    
+    print 'response_type =', response_type
+    print 'client_id =', client_id
+    print 'redirect_uri =', redirect_uri
+    print 'response_type =', response_type
+    print 'access_type =', access_type
+    
+    url = '?client_id={client_id}&redirect_uri={redirect_uri}&response_type={response_type}&access_type={access_type}'
+    url = url.format(client_id=client_id, redirect_uri=redirect_uri,
+                     response_type=response_type, access_type=access_type)
+    print 'url =', url
+    #except Exception as ex:
+    #    redirect(URL(c='error', vars=dict(msg=ex)))
 
     return locals()
 
