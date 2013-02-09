@@ -33,6 +33,8 @@ def index():
         params = oauth.validate_authorize_params(request.get_vars)
     except Exception as ex:
         redirect(URL(c='error', vars=dict(msg=ex)))
+    
+    print 'params =', params
 
     # POST request. Yes/No answer
     if request.post_vars:
@@ -48,8 +50,6 @@ def index():
         else:
             redirect(request.get_vars['redirect_uri'] + '#error=access_denied')
 
-    # Builds the response URL
-    url = ''
     #try:
     client_id = params['client_id']
     redirect_uri = params['redirect_uri']
@@ -63,7 +63,8 @@ def index():
     print 'response_type =', response_type
     print 'access_type =', access_type
     
-    url = '?client_id={client_id}&redirect_uri={redirect_uri}&response_type={response_type}&access_type={access_type}'
+    url = '?client_id={client_id}&redirect_uri={redirect_uri}'
+    url += '&response_type={response_type}&access_type={access_type}'
     url = url.format(client_id=client_id, redirect_uri=redirect_uri,
                      response_type=response_type, access_type=access_type)
     print 'url =', url

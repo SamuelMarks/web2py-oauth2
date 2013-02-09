@@ -203,18 +203,20 @@ class OAuth2(object):
         state = input_data.pop('state', None)
         the_scope = input_data.pop('the_scope', None)
         redirect_uri = input_data.pop('redirect_uri', None)
+        access_type = input_data.pop('access_type', 'online') # default access-type
+
         token_type = self.config.get(self.CONFIG_TOKEN_TYPE, None)
         realm = self.config.get(self.CONFIG_WWW_REALM, None)
         stored_client = self.storage.get_client_credentials(client_id)
         
         # Checks redirect_uri parameter
         stored_redirect_uri = stored_client['redirect_uri'] if stored_client else None
-        print 'stored_client =', stored_client
-        if (not redirect_uri or not stored_redirect_uri) and redirect_uri != stored_redirect_uri:
+        if not redirect_uri or not stored_redirect_uri or redirect_uri != stored_redirect_uri:
             raise HTTP(418, 'NameError: Invalid or mismatch redirect URI.')  # you wanted a teapot... right?!
+        del stored_redirect_uri
 
         # Checks client_id parameter
-        elif not client_id:
+        if not client_id:
             raise HTTP(412, 'KeyError: Parameter missing; "client_id" is required.')
 
         # Checks the stored client details
@@ -237,7 +239,7 @@ class OAuth2(object):
         elif not state and self.config.get(self.CONFIG_ENFORCE_STATE, None):
             raise HTTP(412, 'KeyError: Parameter missing; "state" is required.')
 
-        return input_data
+        return locals()
         
     def validate_access_params(self, get_data, post_data, header):
         token_type = self.config[self.CONFIG_TOKEN_TYPE]
@@ -253,6 +255,8 @@ class OAuth2(object):
                                                   
             elif bearer != self.TOKEN_BEARER_HEADER_NAME:
                 raise HTTP(415, 'Only "Bearer" token type is allowed')
+
+            methods += 1
 
         token = post_data.get(self.TOKEN_PARAM_NAME,
                               get_data.get(self.TOKEN_PARAM_NAME,
