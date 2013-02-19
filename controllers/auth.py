@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from gluon.http import HTTP
+from gluon.tools import Field
+from gluon.sqlhtml import SQLFORM
+
 def index():
     """
     This method has two functionalities:
@@ -17,7 +21,7 @@ def index():
     redirect_uri=[your_callback_uri]&
     response_type=code&
     access_type=online
-    NOTE: You can pass a "the_scope" parameter, but you need to configure it at the
+    NOTE: You can pass a "scope" parameter, but you need to configure it at the
     OAuth2 object constructor.
     """
     
@@ -29,47 +33,43 @@ def index():
     # Validates GET parameters
     params = dict()
     success = False
+    
     try:
         params = oauth.validate_authorize_params(request.get_vars)
     except Exception as ex:
         redirect(URL(c='error', vars=dict(msg=ex)))
+
+    error = []
+    client_id = params.get('client_id', error.append('No client_id'))
+    redirect_uri = params.get('redirect_uri', error.append('No redirect_uri'))
+    the_scope = params.get('scope', None)
+    response_type = params.get('response_type', error.append('No response_type'))
+    access_type = params.get('access_type', error.append('No access_type'))
+
+    approval_form = SQLFORM.factory(submit_button='Yes')
+    approval_form.add_button('No', redirect_uri + '#error=access_denied')
+ 
+    if approval_form.process().accepted:
+        user_id = '501faa19a34feb05890005c9' # Change to `auth.user` for web2py
+        code = oauth.storage.add_code(client_id, user_id,
+                                      oauth.config[oauth.CONFIG_CODE_LIFETIME])
+        raise(404, 'redirect_uri ={0}'.format(redirect_uri))
+        #redirect(redirect_uri + '?code={code}'.join(code=code))
     
-    print 'params =', params
-
-    # POST request. Yes/No answer
-    if request.post_vars:
-        success = True
-
-        # Access given by the user?
-        if request.post_vars['accept'] == 'Yes':
-            user_id = '501faa19a34feb05890005c9'  # Change it. Get it from your DB
-            code = oauth.storage.add_code(request.post_vars['client_id'],
-                                          user_id,
-                                          oauth.config[oauth.CONFIG_CODE_LIFETIME])
-            redirect(request.get_vars['redirect_uri'] + '?code=' + code)
-        else:
-            redirect(request.get_vars['redirect_uri'] + '#error=access_denied')
-
-    #try:
-    client_id = params['client_id']
-    redirect_uri = params['redirect_uri']
-    the_scope = params['the_scope']
-    response_type = params['response_type']
-    access_type = params['access_type']
+    #print 'response_type =', response_type
+    #print 'client_id =', client_id
+    #print 'redirect_uri =', redirect_uri
+    #print 'response_type =', response_type
+    #print 'access_type =', access_type
     
-    print 'response_type =', response_type
-    print 'client_id =', client_id
-    print 'redirect_uri =', redirect_uri
-    print 'response_type =', response_type
-    print 'access_type =', access_type
+    if error:
+        print (412, 'KeyError(s): {0}'.format(', '.join(error)))
     
     url = '?client_id={client_id}&redirect_uri={redirect_uri}'
     url += '&response_type={response_type}&access_type={access_type}'
     url = url.format(client_id=client_id, redirect_uri=redirect_uri,
                      response_type=response_type, access_type=access_type)
     print 'url =', url
-    #except Exception as ex:
-    #    redirect(URL(c='error', vars=dict(msg=ex)))
 
     return locals()
 

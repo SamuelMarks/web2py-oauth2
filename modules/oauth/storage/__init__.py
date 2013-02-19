@@ -120,6 +120,7 @@ class web2pyStorage(OAuthStorage):
             Field('code_id'),  # pid
             Field('client_id', 'reference clients'),
             Field('user_id'),
+            Field('expires', 'datetime'),
             Field('expires_access', 'datetime'),
             Field('expires_refresh', 'datetime'),
             Field('the_scope'),  # 'scope' is a reserved SQL keyword
@@ -203,9 +204,12 @@ class web2pyStorage(OAuthStorage):
         while self.get_refresh_token(code):
             code = self.generate_hash_sha1()
 
-        self.db(self.db.codes.code_id == code).update(**{'client_id': client_id,
-                                                         'user_id': user_id,
-                                                         'expires': expires})
+        print 'client_id =', client_id
+        print 'user_id =', user_id
+        print 'expires =', expires
+        self.db(self.db.codes.code_id == code).update(client_id=client_id,
+                                                      user_id=user_id,
+                                                      expires=expires)
 
         return code
 
