@@ -203,7 +203,7 @@ class OAuth2(object):
         state = input_data.pop('state', None)
         the_scope = input_data.pop('the_scope', None)
         redirect_uri = input_data.pop('redirect_uri', None)
-        access_type = input_data.pop('access_type', 'online') # default access-type
+        access_type = input_data.pop('access_type', 'online')  # default access-type
 
         token_type = self.config.get(self.CONFIG_TOKEN_TYPE, None)
         realm = self.config.get(self.CONFIG_WWW_REALM, None)
@@ -263,7 +263,7 @@ class OAuth2(object):
                                            None))
         if token:
             methods += 1
-            
+
         if methods > 1:
             raise HTTP(405, 'Only one method may be used to authenticate at a time (Auth header, GET or POST).')
 
@@ -274,7 +274,7 @@ class OAuth2(object):
 
         if not token:
             raise HTTP(424, 'LookupError: Supplied access token is invalid.')
-            
+        
         elif self.storage.expired_access_token(token):
             raise HTTP(410, 'ValueError: The access token provided has expired')
                                               

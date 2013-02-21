@@ -109,32 +109,46 @@ class web2pyStorage(OAuthStorage):
         from gluon.validators import IS_URL
 
         # Note that (by default): an 'id' primary key is associated with every table.        
+        
+        self.db.define_table('foo',
+            Field('bar', 'reference haz.foo'),
+            primarykey=['bar']
+        )
+        
+        self.db.define_table('haz',
+            Field('car', 'reference foo.bar'),
+            primarykey=['car']
+        )
+        
         self.db.define_table('clients',
             Field('client_id'),  # pid
             Field('client_secret'),
             Field('redirect_uri', requires=IS_URL(allowed_schemes=['http', 'https'])),
-            Field('client_name')
+            Field('client_name'),
+            primarykey=['client_id']
         )
 
         self.db.define_table('codes',
             Field('code_id'),  # pid
-            Field('client_id', 'reference clients'),
+            Field('client_id', 'reference clients.client_id'),
             Field('user_id'),
             Field('expires', 'datetime'),
             Field('expires_access', 'datetime'),
             Field('expires_refresh', 'datetime'),
             Field('the_scope'),  # 'scope' is a reserved SQL keyword
-            Field('access_token')
+            Field('access_token'),
+            primarykey=['code_id']
         )
         
         self.db.define_table('tokens',
             Field('refresh_token'),  # pid
-            Field('client_id'),
+            Field('client_id', 'reference clients.client_id'),
             Field('user_id'),
             Field('expires_access'),
             Field('expires_refresh'),
             Field('the_scope'),
-            Field('access_token')
+            Field('access_token'),
+            primarykey=['refresh_token']
         )
 
         self.tables_created = True
@@ -204,9 +218,10 @@ class web2pyStorage(OAuthStorage):
         while self.get_refresh_token(code):
             code = self.generate_hash_sha1()
 
+        print 'Within web2pyStorage.add_code function:'
         print 'client_id =', client_id
         print 'user_id =', user_id
-        print 'expires =', expires
+        print 'expires =', expires, '\n'
         self.db(self.db.codes.code_id == code).update(client_id=client_id,
                                                       user_id=user_id,
                                                       expires=expires)
@@ -221,7 +236,7 @@ class web2pyStorage(OAuthStorage):
         It returns True if the code is valid. Otherwise, False
         """
 
-        data = self.db(self.db.codes.code_id == code).select(self.db.expires_access).first()
+        data = self.db(self.db.codes.code_id == code).select(self.db.expires_access).select().first()
 
         if data:
             return datetime.datetime.now() < data.expires_access
@@ -311,8 +326,8 @@ class web2pyStorage(OAuthStorage):
 
         now = datetime.datetime.now()
         credentials = self.get_client_credentials(client_id)
-        old_token = self.db.tokens.update_or_insert({'refresh_token': refresh_token,
-                                                     'client_id': client_id})
+        old_token = self.db.tokens.update_or_insert(**{'refresh_token': refresh_token,
+                                                       'client_id': client_id})
 
         if old_token and expired_refresh_token(old_token, now) and credentials['client_secret'] == client_secret:
             return self.add_access_token(client_id,
@@ -334,7 +349,7 @@ class web2pyStorage(OAuthStorage):
     @define_schema.__get__(object)
     def get_refresh_token(self, refresh_token):
         """Returns the token data, if the refresh token exists"""
-    
+
         # 'code' == 'refresh_token', right?
         return self.db(self.db.tokens.refresh_token == refresh_token).select().first()
 

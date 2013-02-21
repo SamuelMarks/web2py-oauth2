@@ -34,10 +34,10 @@ def index():
     params = dict()
     success = False
     
-    try:
-        params = oauth.validate_authorize_params(request.get_vars)
-    except Exception as ex:
-        redirect(URL(c='error', vars=dict(msg=ex)))
+    #try:
+    params = oauth.validate_authorize_params(request.get_vars)
+    #except Exception as ex:
+    #    redirect(URL(c='error', vars=dict(msg=ex)))
 
     error = []
     client_id = params.get('client_id', error.append('No client_id'))
