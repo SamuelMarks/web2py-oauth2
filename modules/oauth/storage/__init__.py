@@ -106,49 +106,58 @@ class web2pyStorage(OAuthStorage):
             return
         
         from gluon.tools import Field
-        from gluon.validators import IS_URL
+        from gluon.validators import IS_URL, IS_IN_DB
 
         # Note that (by default): an 'id' primary key is associated with every table.        
         
-        self.db.define_table('foo',
-            Field('bar', 'reference haz.foo'),
-            primarykey=['bar']
-        )
-        
-        self.db.define_table('haz',
-            Field('car', 'reference foo.bar'),
-            primarykey=['car']
-        )
+        # OAuth2 flow (from RFC6749)
+        ''' (A)  The client requests authorization from the resource owner.
+
+            (B)  The client receives an authorization grant, which is a
+                 credential representing the resource owner’s authorization...
+
+            (C)  The client requests an access token by authenticating with the
+                 authorization server and presenting the authorization grant.
+
+            (D)  The authorization server authenticates the client and validates
+                 the authorization grant, and if valid, issues an access token.
+
+            (E)  The client requests the protected resource from the resource
+                 server and authenticates by presenting the access token.
+            
+            (F)  The resource server validates the access token, and
+                 if valid, serves the request.'''
         
         self.db.define_table('clients',
             Field('client_id'),  # pid
             Field('client_secret'),
             Field('redirect_uri', requires=IS_URL(allowed_schemes=['http', 'https'])),
             Field('client_name'),
-            primarykey=['client_id']
+            Field('user_id') # fid
         )
 
+        
         self.db.define_table('codes',
             Field('code_id'),  # pid
-            Field('client_id', 'reference clients.client_id'),
-            Field('user_id'),
-            Field('expires', 'datetime'),
-            Field('expires_access', 'datetime'),
-            Field('expires_refresh', 'datetime'),
-            Field('the_scope'),  # 'scope' is a reserved SQL keyword
-            Field('access_token'),
-            primarykey=['code_id']
         )
+
+        
+        '''
+        self.db.define_table('token_codes',
+            Field('token_id', requires=IS_IN_DB(self.db, 'tokens.refresh_token')),
+            Field('code_id', requires=IS_IN_DB(self.db, 'codes.code_id'))
+        )
+        '''
         
         self.db.define_table('tokens',
             Field('refresh_token'),  # pid
-            Field('client_id', 'reference clients.client_id'),
-            Field('user_id'),
-            Field('expires_access'),
-            Field('expires_refresh'),
-            Field('the_scope'),
+            Field('expires_refresh', 'datetime'),
             Field('access_token'),
-            primarykey=['refresh_token']
+            Field('expires_access', 'datetime'),
+
+            Field('the_scope'), # 'scope' is a reserved [SQL] keyword
+            
+            Field('client_id', requires=IS_IN_DB(self.db, 'clients.client_id')),
         )
 
         self.tables_created = True
@@ -218,13 +227,10 @@ class web2pyStorage(OAuthStorage):
         while self.get_refresh_token(code):
             code = self.generate_hash_sha1()
 
-        print 'Within web2pyStorage.add_code function:'
-        print 'client_id =', client_id
-        print 'user_id =', user_id
-        print 'expires =', expires, '\n'
-        self.db(self.db.codes.code_id == code).update(client_id=client_id,
-                                                      user_id=user_id,
-                                                      expires=expires)
+        self.db.codes.update_or_insert(self.db.codes.user_id == user_id,
+                                       code_id=code,
+                                       client_id=client_id,
+                                       expires=expires)
 
         return code
 
@@ -276,7 +282,7 @@ class web2pyStorage(OAuthStorage):
     @define_schema.__get__(object)
     def add_access_token(self, client_id, user_id, access_lifetime,
                          refresh_token=None, refresh_lifetime=None,
-                         expires_refresh=None, the_scope=None):
+                         expires_refresh=None, scope=None):
         """Generates an access token and adds it to the database. If the refresh
         token does not exist, it will create one. The method takes 6 arguments:
         * The client application ID
@@ -284,7 +290,7 @@ class web2pyStorage(OAuthStorage):
         * The access token lifetime
         * [OPTIONAL] The refresh token
         * [OPTIONAL] The refresh token lifetime
-        * [OPTIONAL] The the_scope of the access
+        * [OPTIONAL] The scope of the access
         """
         
         now = datetime.datetime.now()
@@ -305,13 +311,13 @@ class web2pyStorage(OAuthStorage):
 
             expires_refresh = add_seconds_to_date(now, refresh_lifetime)
 
-        self.db.tokens.update_or_insert(**{'refresh_token': referesh_token,
-                                           'client_id': client_id,
-                                           'user_id': user_id,
-                                           'expires_access': expires_access,
-                                           'expires_refresh': expires_refresh,
-                                           'the_scope': the_scope,
-                                           'access_token': access_token})
+        self.db.tokens.update_or_insert(self.db.tokens.client_id == client_id,
+                                        user_id = user_id,
+                                        refresh_token=referesh_token,
+                                        expires_access=expires_access,
+                                        expires_refresh=expires_refresh,
+                                        the_scope=scope,
+                                        access_token=access_token)
 
         return access_token, refresh_token, expires_access
 
@@ -336,7 +342,7 @@ class web2pyStorage(OAuthStorage):
                                          old_token['refresh_token'],
                                          self.config[self.CONFIG_REFRESH_LIFETIME],
                                          old_token['expires_refresh'],
-                                         old_token['the_scope'])
+                                         old_token['scope'])
         return (False,) * 3
         
     @define_schema.__get__(object)
@@ -466,7 +472,7 @@ class MongoStorage(OAuthStorage):
 
     def add_access_token(self, client_id, user_id, access_lifetime,
                          refresh_token=None, refresh_lifetime=None,
-                         expires_refresh=None, the_scope=None):
+                         expires_refresh=None, scope=None):
         """Generates an access token and adds it to the database. If the refresh
         token does not exist, it will create one. The method takes 6 arguments:
         * The client application ID
@@ -474,7 +480,7 @@ class MongoStorage(OAuthStorage):
         * The access token lifetime
         * [OPTIONAL] The refresh token
         * [OPTIONAL] The refresh token lifetime
-        * [OPTIONAL] The the_scope of the access
+        * [OPTIONAL] The scope of the access
         """
         
         now = datetime.datetime.now()
@@ -500,7 +506,7 @@ class MongoStorage(OAuthStorage):
                              'user_id': user_id,
                              'expires_access': expires_access,
                              'expires_refresh': expires_refresh,
-                             'the_scope': the_scope,
+                             'the_scope': scope,  # keeping as 'the_scope' for consistency
                              'access_token': access_token})
 
         return access_token, refresh_token, expires_access
@@ -525,7 +531,7 @@ class MongoStorage(OAuthStorage):
                                          old_token['refresh_token'],
                                          self.config[self.CONFIG_REFRESH_LIFETIME],
                                          old_token['expires_refresh'],
-                                         old_token['the_scope'])
+                                         old_token['scope'])
         return (False,) * 3
         
     def get_access_token(self, access_token):

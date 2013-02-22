@@ -201,7 +201,7 @@ class OAuth2(object):
         client_id = input_data.pop('client_id', None)
         response_type = input_data.pop('response_type', None)
         state = input_data.pop('state', None)
-        the_scope = input_data.pop('the_scope', None)
+        scope = input_data.pop('scope', None)
         redirect_uri = input_data.pop('redirect_uri', None)
         access_type = input_data.pop('access_type', 'online')  # default access-type
 
@@ -231,8 +231,8 @@ class OAuth2(object):
         elif response_type != self.RESPONSE_TYPE_AUTH_CODE:
             raise HTTP(501, 'The response type you requested is unsupported.')
         
-        # Checks the the_scope parameter
-        elif the_scope and not self.check_the_scope(the_scope, self.config.get(self.CONFIG_SUPPORTED_SCOPES, None)):
+        # Checks the scope parameter
+        elif scope and not self.check_scope(scope, self.config.get(self.CONFIG_SUPPORTED_SCOPES, None)):
             raise HTTP(501, 'The scope you requested is unsupported.')
 
         # Checks the state parameter

@@ -42,9 +42,14 @@ def index():
     error = []
     client_id = params.get('client_id', error.append('No client_id'))
     redirect_uri = params.get('redirect_uri', error.append('No redirect_uri'))
-    the_scope = params.get('scope', None)
+    scope = params.get('scope', None)
     response_type = params.get('response_type', error.append('No response_type'))
     access_type = params.get('access_type', error.append('No access_type'))
+    
+    '''
+    if error:
+        print 'KeyError(s): {0}'.format(', '.join(error))
+    '''
 
     approval_form = SQLFORM.factory(submit_button='Yes')
     approval_form.add_button('No', redirect_uri + '#error=access_denied')
@@ -53,23 +58,12 @@ def index():
         user_id = '501faa19a34feb05890005c9' # Change to `auth.user` for web2py
         code = oauth.storage.add_code(client_id, user_id,
                                       oauth.config[oauth.CONFIG_CODE_LIFETIME])
-        raise(404, 'redirect_uri ={0}'.format(redirect_uri))
-        #redirect(redirect_uri + '?code={code}'.join(code=code))
-    
-    #print 'response_type =', response_type
-    #print 'client_id =', client_id
-    #print 'redirect_uri =', redirect_uri
-    #print 'response_type =', response_type
-    #print 'access_type =', access_type
-    
-    if error:
-        print (412, 'KeyError(s): {0}'.format(', '.join(error)))
+        redirect (redirect_uri + '?code={code}'.format(code=code))
     
     url = '?client_id={client_id}&redirect_uri={redirect_uri}'
     url += '&response_type={response_type}&access_type={access_type}'
     url = url.format(client_id=client_id, redirect_uri=redirect_uri,
                      response_type=response_type, access_type=access_type)
-    print 'url =', url
 
     return locals()
 

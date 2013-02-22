@@ -35,23 +35,23 @@
 #     * The realm provided
 #     * The error code
 #     * A human readable error message, with additional information
-#     * [OPTIONAL] Required if the "the_scope" parameter was present in the client
+#     * [OPTIONAL] Required if the "scope" parameter was present in the client
 #       authorization request
 #     """
     
 #     def __init__(self, http_response, token_type,
-#                  realm, error, msg, the_scope=None):
+#                  realm, error, msg, scope=None):
 #         self.http_response = http_response
 #         self.token_type = token_type
 #         self.realm = realm
 #         self.error = error
 #         self.msg = msg
-#         self.the_scope = the_scope or 'No the_scope provided'
+#         self.scope = scope or 'No scope provided'
     
 #     def __str__(self):
 #         return "".join([self.http_response, ' | ', self.token_type, ' | ',
 #                         self.realm, ' | ', self.error, ' | ', self.msg,
-#                         ' | ', self.the_scope])
+#                         ' | ', self.scope])
 #         # Previous [concat.] method was too slow, see my benchmarks: http://stackoverflow.com/a/14610440/587021
 
 # class OAuth2RedirectException(Exception):
